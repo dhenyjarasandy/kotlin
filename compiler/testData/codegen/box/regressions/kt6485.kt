@@ -1,5 +1,5 @@
 // TODO: muted automatically, investigate should it be ran for JS or not
-// IGNORE_BACKEND: JS, NATIVE
+// IGNORE_BACKEND: JS
 
 // WITH_RUNTIME
 // FULL_JDK
@@ -16,10 +16,14 @@ open class TypeLiteral<T> {
 inline fun <reified T> typeLiteral(): TypeLiteral<T> = object : TypeLiteral<T>() {}
 
 fun box(): String {
-    assertEquals("java.lang.String", (typeLiteral<String>().type as Class<*>).canonicalName)
-    assertEquals("java.util.List<?>", typeLiteral<List<*>>().type.toString())
-    assertEquals("java.lang.String[]", (typeLiteral<Array<String>>().type as Class<*>).canonicalName)
-    assertEquals("java.lang.Integer[]", (typeLiteral<Array<Int>>().type as Class<*>).canonicalName)
-    assertEquals("java.lang.String[][]", (typeLiteral<Array<Array<String>>>().type as Class<*>).canonicalName)
+    assertEquals("java.lang.String", typeLiteral<String>().type.canonicalName)
+    assertEquals("java.util.List<?>", typeLiteral<List<*>>().type.canonicalName)
+    assertEquals("java.lang.String[]", typeLiteral<Array<String>>().type.canonicalName)
+    assertEquals("java.lang.Integer[]", typeLiteral<Array<Int>>().type.canonicalName)
+    assertEquals("java.lang.String[][]", typeLiteral<Array<Array<String>>>().type.canonicalName)
     return "OK"
 }
+
+
+val Type.canonicalName: String
+    get() = if (this is Class<*>) this.canonicalName else this.toString()

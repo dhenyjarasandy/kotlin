@@ -451,6 +451,10 @@ fun main(args: Array<String>) {
         testClass<AbstractWriteFlagsTest> {
             model("codegen/java8/writeFlags")
         }
+
+        testClass<AbstractBlackBoxCodegenTarget8Test> {
+            model("codegen/box", targetBackend = TargetBackend.JVM)
+        }
     }
 
     testGroup("idea/tests", "idea/testData") {
