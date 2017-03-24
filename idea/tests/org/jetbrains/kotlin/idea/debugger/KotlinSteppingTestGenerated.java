@@ -1064,6 +1064,18 @@ public class KotlinSteppingTestGenerated extends AbstractKotlinSteppingTest {
             doCustomTest(fileName);
         }
 
+        @TestMetadata("kt15823.kt")
+        public void testKt15823() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/debugger/tinyApp/src/stepping/custom/kt15823.kt");
+            doCustomTest(fileName);
+        }
+
+        @TestMetadata("kt17295.kt")
+        public void testKt17295() throws Exception {
+            String fileName = KotlinTestUtils.navigationMetadata("idea/testData/debugger/tinyApp/src/stepping/custom/kt17295.kt");
+            doCustomTest(fileName);
+        }
+
         @TestMetadata("manyFilesWithInlineCalls1Dex.kt")
         public void testManyFilesWithInlineCalls1Dex() throws Exception {
             String fileName = KotlinTestUtils.navigationMetadata("idea/testData/debugger/tinyApp/src/stepping/custom/manyFilesWithInlineCalls1Dex.kt");

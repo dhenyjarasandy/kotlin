@@ -87,7 +87,7 @@ public class MockReferenceType implements ReferenceType {
 
     @Override
     public boolean isPrepared() {
-        return false;
+        return true;
     }
 
     @Override
