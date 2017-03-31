@@ -43,6 +43,10 @@ public class JsAstMapper {
     }
 
     private JsNode map(Node node) throws JsParserException {
+        return withLocation(mapWithoutLocation(node), node);
+    }
+
+    private JsNode mapWithoutLocation(Node node) throws JsParserException {
         switch (node.getType()) {
             case TokenStream.SCRIPT: {
                 JsBlock block = new JsBlock();
@@ -1114,5 +1118,19 @@ public class JsAstMapper {
     private boolean isJsNumber(Node jsNode) {
         int type = jsNode.getType();
         return type == TokenStream.NUMBER || type == TokenStream.NUMBER;
+    }
+
+    private static <T extends JsNode> T withLocation(T astNode, Node node) {
+        int lineNumber = node.getLineno();
+        if (lineNumber >= 0) {
+            JsLocation location = new JsLocation(lineNumber);
+            if (astNode instanceof SourceInfoAwareJsNode) {
+                astNode.setSource(location);
+            }
+            else if (astNode instanceof JsExpressionStatement) {
+                ((JsExpressionStatement) astNode).getExpression().setSource(location);
+            }
+        }
+        return astNode;
     }
 }
