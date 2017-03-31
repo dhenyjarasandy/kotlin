@@ -399,8 +399,8 @@ internal class GradleMessageCollector(val logger: Logger) : MessageCollector {
         // Do nothing
     }
 
-    override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageLocation) {
-        val text = with(StringBuilder()) {
+    override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageLocation?) {
+        val text = buildString {
             append(when (severity) {
                 in CompilerMessageSeverity.VERBOSE -> "v"
                 in CompilerMessageSeverity.ERRORS -> {
@@ -413,18 +413,18 @@ internal class GradleMessageCollector(val logger: Logger) : MessageCollector {
             })
             append(": ")
 
-            val (path, line, column) = location
-            if (path != null) {
-                append(path)
-                append(": ")
-                if (line > 0 && column > 0) {
-                    append("($line, $column): ")
+            if (location != null) {
+                val (path, line, column) = location
+                if (path != null) {
+                    append(path)
+                    append(": ")
+                    if (line > 0 && column > 0) {
+                        append("($line, $column): ")
+                    }
                 }
             }
 
             append(message)
-
-            toString()
         }
         when (severity) {
             in CompilerMessageSeverity.VERBOSE -> logger.debug(text)
