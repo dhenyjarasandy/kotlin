@@ -128,7 +128,14 @@ class ClassFileToSourceStubConverter(
         if ((descriptor as? ClassDescriptor)?.isNested ?: false) return null
 
         val packageAnnotations = JavacList.nil<JCAnnotation>()
-        val packageName = ktFile.packageFqName.asString()
+        val packageFqName = ktFile.packageFqName
+        val packageName = packageFqName.asString()
+
+        // Ignore class completely if it's package name contains Java keywords
+        if (packageFqName.pathSegments().any { it.asString() in JAVA_KEYWORDS }) {
+            return null
+        }
+
         val packageClause = if (packageName.isEmpty()) null else treeMaker.FqName(packageName)
 
         val classDeclaration = convertClass(clazz, packageName, true) ?: return null
