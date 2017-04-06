@@ -37,7 +37,8 @@ State state = new File(basedir, "build.log").readLines().collect { it.replaceAll
                 // TODO: Remove after build is launched only under java 8
                 replaceAll(/\[WARNING] Running the Kotlin compiler under Java 6 or 7 is unsupported and will no longer be possible in a future update./, "").
                 replaceAll(/^\[[A-Z]+\]$/, "").
-                replaceAll(/version [0-9a-z-+\.]+/, "version @snapshot@")
+                replaceAll(/version [0-9a-z-+\.]+/, "version @snapshot@").
+                replaceAll(/\(JRE .+\)/, "(JRE <jre-version>)")
 
         if (filtered != "") {
             acc.lines << filtered

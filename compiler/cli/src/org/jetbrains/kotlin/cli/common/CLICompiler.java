@@ -111,7 +111,7 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
         }
 
         if (arguments.help || arguments.extraHelp) {
-            Usage.print(errStream, arguments);
+            Usage.print(errStream, this, arguments);
             return OK;
         }
 
@@ -137,7 +137,7 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
     // Used in kotlin-maven-plugin (KotlinCompileMojoBase)
     @NotNull
     public ExitCode exec(@NotNull MessageCollector messageCollector, @NotNull Services services, @NotNull A arguments) {
-        printVersionIfNeeded(messageCollector, arguments);
+        printVersionIfNeeded(arguments);
 
         if (arguments.suppressWarnings) {
             messageCollector = new FilteringMessageCollector(messageCollector, Predicate.isEqual(WARNING));
@@ -347,11 +347,18 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
             @NotNull Disposable rootDisposable
     );
 
-    private void printVersionIfNeeded(@NotNull MessageCollector messageCollector, @NotNull A arguments) {
-        if (!arguments.version) return;
-
-        messageCollector.report(INFO, "Kotlin Compiler version " + KotlinCompilerVersion.VERSION, null);
+    @SuppressWarnings("UseOfSystemOutOrSystemErr")
+    private void printVersionIfNeeded(@NotNull A arguments) {
+        if (arguments.version) {
+            System.out.println(
+                    executableScriptFileName() + " " + KotlinCompilerVersion.VERSION +
+                    " (JRE " + System.getProperty("java.runtime.version") + ")"
+            );
+        }
     }
+
+    @NotNull
+    public abstract String executableScriptFileName();
 
     /**
      * Useful main for derived command line tools
