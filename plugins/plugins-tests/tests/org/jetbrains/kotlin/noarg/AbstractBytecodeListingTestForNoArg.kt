@@ -19,7 +19,7 @@ package org.jetbrains.kotlin.noarg
 import com.intellij.openapi.extensions.Extensions
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.codegen.AbstractBytecodeListingTest
-import org.jetbrains.kotlin.codegen.extensions.ClassBuilderInterceptorExtension
+import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension
 import org.jetbrains.kotlin.diagnostics.rendering.DefaultErrorMessages
 import org.jetbrains.kotlin.extensions.StorageComponentContainerContributor
 import org.jetbrains.kotlin.noarg.diagnostic.DefaultErrorMessagesNoArg
@@ -31,7 +31,9 @@ abstract class AbstractBytecodeListingTestForNoArg : AbstractBytecodeListingTest
 
     override fun setupEnvironment(environment: KotlinCoreEnvironment) {
         Extensions.getRootArea().getExtensionPoint(DefaultErrorMessages.Extension.EP_NAME).registerExtension(DefaultErrorMessagesNoArg())
-        StorageComponentContainerContributor.registerExtension(environment.project, CliNoArgComponentContainerContributor(NOARG_ANNOTATIONS))
-        ClassBuilderInterceptorExtension.registerExtension(environment.project, NoArgClassBuilderInterceptorExtension())
+
+        val project = environment.project
+        StorageComponentContainerContributor.registerExtension(project, CliNoArgComponentContainerContributor(NOARG_ANNOTATIONS))
+        ExpressionCodegenExtension.registerExtension(project, NoArgExpressionCodegenExtension())
     }
 }
