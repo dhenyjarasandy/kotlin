@@ -217,6 +217,10 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
         if (arguments.reportOutputFiles) {
             configuration.put(CommonConfigurationKeys.REPORT_OUTPUT_FILES, true);
         }
+        if (arguments.intellijPluginRoot != null) {
+            configuration.put(CLIConfigurationKeys.INTELLIJ_PLUGIN_ROOT, arguments.intellijPluginRoot);
+        }
+        @SuppressWarnings("deprecation")
         CompilerJarLocator locator = services.get(CompilerJarLocator.class);
         if (locator != null) {
             configuration.put(CLIConfigurationKeys.COMPILER_JAR_LOCATOR, locator);

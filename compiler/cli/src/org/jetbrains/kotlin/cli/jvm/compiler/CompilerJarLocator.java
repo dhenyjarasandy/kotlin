@@ -20,6 +20,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
+/**
+ * @deprecated use the -Xintellij-plugin-root command line argument instead
+ */
+@Deprecated
 public interface CompilerJarLocator {
     @NotNull
     File getCompilerJar();
