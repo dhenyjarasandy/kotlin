@@ -214,7 +214,9 @@ public abstract class CLICompiler<A extends CommonCompilerArguments> {
         if (arguments.noInline) {
             configuration.put(CommonConfigurationKeys.DISABLE_INLINE, true);
         }
-
+        if (arguments.reportOutputFiles) {
+            configuration.put(CommonConfigurationKeys.REPORT_OUTPUT_FILES, true);
+        }
         CompilerJarLocator locator = services.get(CompilerJarLocator.class);
         if (locator != null) {
             configuration.put(CLIConfigurationKeys.COMPILER_JAR_LOCATOR, locator);
