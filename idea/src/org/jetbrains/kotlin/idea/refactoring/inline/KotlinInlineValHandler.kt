@@ -16,7 +16,7 @@
 
 package org.jetbrains.kotlin.idea.refactoring.inline
 
-import com.google.common.collect.Sets
+import com.intellij.codeInsight.TargetElementUtil
 import com.intellij.lang.Language
 import com.intellij.lang.refactoring.InlineActionHandler
 import com.intellij.openapi.application.ApplicationManager
@@ -27,35 +27,48 @@ import com.intellij.openapi.wm.WindowManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.searches.ReferencesSearch
 import com.intellij.refactoring.HelpID
 import com.intellij.refactoring.JavaRefactoringSettings
 import com.intellij.refactoring.RefactoringBundle
 import com.intellij.refactoring.util.CommonRefactoringUtil
 import com.intellij.util.containers.MultiMap
+import org.jetbrains.kotlin.descriptors.SimpleFunctionDescriptor
+import org.jetbrains.kotlin.descriptors.VariableDescriptor
 import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.idea.KotlinLanguage
+import org.jetbrains.kotlin.idea.analysis.analyzeInContext
 import org.jetbrains.kotlin.idea.caches.resolve.analyze
 import org.jetbrains.kotlin.idea.caches.resolve.getResolutionFacade
+import org.jetbrains.kotlin.idea.caches.resolve.resolveToDescriptor
+import org.jetbrains.kotlin.idea.codeInliner.CallableUsageReplacementStrategy
+import org.jetbrains.kotlin.idea.codeInliner.CodeToInlineBuilder
 import org.jetbrains.kotlin.idea.codeInsight.shorten.performDelayedRefactoringRequests
 import org.jetbrains.kotlin.idea.core.ShortenReferences
+import org.jetbrains.kotlin.idea.core.copied
 import org.jetbrains.kotlin.idea.core.replaced
 import org.jetbrains.kotlin.idea.refactoring.addTypeArgumentsIfNeeded
 import org.jetbrains.kotlin.idea.refactoring.checkConflictsInteractively
 import org.jetbrains.kotlin.idea.refactoring.getQualifiedTypeArgumentList
+import org.jetbrains.kotlin.idea.references.KtSimpleNameReference
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.idea.resolve.ResolutionFacade
 import org.jetbrains.kotlin.idea.util.IdeDescriptorRenderers
 import org.jetbrains.kotlin.idea.util.application.executeWriteCommand
+import org.jetbrains.kotlin.idea.util.getResolutionScope
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.*
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.lazy.BodyResolveMode
 import org.jetbrains.kotlin.types.ErrorUtils
+import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.expressions.OperatorConventions
 import org.jetbrains.kotlin.utils.addIfNotNull
+import org.jetbrains.kotlin.utils.addToStdlib.firstIsInstanceOrNull
 import org.jetbrains.kotlin.utils.sure
-import java.util.*
 
 class KotlinInlineValHandler : InlineActionHandler() {
     enum class InlineMode {
@@ -106,34 +119,42 @@ class KotlinInlineValHandler : InlineActionHandler() {
         val file = declaration.containingKtFile
         val name = declaration.name ?: return
 
-        val references = ReferencesSearch.search(declaration)
-        val referenceExpressions = ArrayList<KtExpression>()
-        val foreignUsages = ArrayList<PsiElement>()
-        for (ref in references) {
-            val refElement = ref.element ?: continue
-            if (refElement !is KtElement) {
-                foreignUsages.add(refElement)
-                continue
-            }
-            referenceExpressions.addIfNotNull((refElement as? KtExpression)?.getQualifiedExpressionForSelectorOrThis())
-        }
+        val assignments = hashSetOf<PsiElement>()
+        val referenceExpressions = arrayListOf<KtExpression>()
+        val foreignUsages = arrayListOf<PsiElement>()
 
-        if (referenceExpressions.isEmpty()) {
-            val kind = if (declaration.isLocal) "Variable" else "Property"
-            return showErrorHint(project, editor, "$kind '$name' is never used")
-        }
+        val searchHelper = PsiSearchHelper.SERVICE.getInstance(project)
+        val scope = GlobalSearchScope.projectScope(project)
+        val isCheapToSearch =
+                searchHelper.isCheapEnoughToSearch(name, scope, null, null) != PsiSearchHelper.SearchCostResult.TOO_MANY_OCCURRENCES
 
-        val assignments = Sets.newHashSet<PsiElement>()
-        referenceExpressions.forEach { expression ->
-            val parent = expression.parent
-
-            val assignment = expression.getAssignmentByLHS()
-            if (assignment != null) {
-                assignments.add(parent)
+        if (isCheapToSearch) {
+            val references = ReferencesSearch.search(declaration)
+            for (ref in references) {
+                val refElement = ref.element ?: continue
+                if (refElement !is KtElement) {
+                    foreignUsages.add(refElement)
+                    continue
+                }
+                referenceExpressions.addIfNotNull((refElement as? KtExpression)?.getQualifiedExpressionForSelectorOrThis())
             }
 
-            if (parent is KtUnaryExpression && OperatorConventions.INCREMENT_OPERATIONS.contains(parent.operationToken)) {
-                assignments.add(parent)
+            if (referenceExpressions.isEmpty()) {
+                val kind = if (declaration.isLocal) "Variable" else "Property"
+                return showErrorHint(project, editor, "$kind '$name' is never used")
+            }
+
+            referenceExpressions.forEach { expression ->
+                val parent = expression.parent
+
+                val assignment = expression.getAssignmentByLHS()
+                if (assignment != null) {
+                    assignments.add(parent)
+                }
+
+                if (parent is KtUnaryExpression && OperatorConventions.INCREMENT_OPERATIONS.contains(parent.operationToken)) {
+                    assignments.add(parent)
+                }
             }
         }
 
@@ -158,23 +179,43 @@ class KotlinInlineValHandler : InlineActionHandler() {
             preProcessInternalUsages(initializer, referenceExpressions)
         }
 
-        fun performRefactoring() {
-            val primaryExpression = if (editor != null) {
-                val offset = editor.caretModel.offset
-                referenceExpressions.firstOrNull { it.textRange.contains(offset) }
-            }
-            else null
-            val primaryRef = primaryExpression?.mainReference
+        val descriptor = element.resolveToDescriptor() as VariableDescriptor
+        val expectedType = if (element.typeReference != null)
+            descriptor.returnType ?: TypeUtils.NO_EXPECTED_TYPE
+        else
+            TypeUtils.NO_EXPECTED_TYPE
 
-            val inlineMode = showDialog(declaration, primaryRef, referenceExpressions.size)
-            if (inlineMode == InlineMode.NONE) {
-                if (isHighlighting) {
+        val initializerCopy = initializer.copied()
+        fun analyzeInitializerCopy(): BindingContext {
+            return initializerCopy.analyzeInContext(initializer.getResolutionScope(),
+                                                    contextExpression = initializer,
+                                                    expectedType = expectedType)
+        }
+
+        fun performRefactoring() {
+            val reference = editor?.let { TargetElementUtil.findReference(it, it.caretModel.offset) }
+            val nameReference = when (reference) {
+                is KtSimpleNameReference -> reference
+                is PsiMultiReference -> reference.references.firstIsInstanceOrNull<KtSimpleNameReference>()
+                else -> null
+            }
+            val replacementBuilder = CodeToInlineBuilder(descriptor, element.getResolutionFacade())
+            val replacement = replacementBuilder.prepareCodeToInline(initializer, emptyList(), ::analyzeInitializerCopy)
+            val replacementStrategy = CallableUsageReplacementStrategy(replacement)
+
+            val dialog = KotlinInlineValDialog(declaration, nameReference, replacementStrategy, assignments)
+
+            if (!ApplicationManager.getApplication().isUnitTestMode) {
+                dialog.show()
+                if (!dialog.isOK && isHighlighting) {
                     val statusBar = WindowManager.getInstance().getStatusBar(project)
                     statusBar?.info = RefactoringBundle.message("press.escape.to.remove.the.highlighting")
                 }
-                return
             }
-
+            else {
+                dialog.doAction()
+            }
+/*
             val chosenExpressions = if (inlineMode == InlineMode.ALL) referenceExpressions else listOf(primaryExpression)
 
             project.executeWriteCommand(RefactoringBundle.message("inline.command", name)) {
@@ -214,6 +255,7 @@ class KotlinInlineValHandler : InlineActionHandler() {
                 }
                 performDelayedRefactoringRequests(project)
             }
+            */
         }
 
         if (foreignUsages.isNotEmpty()) {
@@ -236,15 +278,6 @@ class KotlinInlineValHandler : InlineActionHandler() {
 
     private fun showErrorHint(project: Project, editor: Editor?, message: String) {
         CommonRefactoringUtil.showErrorHint(project, editor, message, RefactoringBundle.message("inline.variable.title"), HelpID.INLINE_VARIABLE)
-    }
-
-    private fun showDialog(property: KtProperty, ref: PsiReference?, occurrenceCount: Int): InlineMode {
-        if (ApplicationManager.getApplication().isUnitTestMode) return InlineMode.ALL
-        if ((ref == null || occurrenceCount <= 1) && !EditorSettingsExternalizable.getInstance().isShowInlineLocalDialog) return InlineMode.ALL
-
-        val dialog = KotlinInlineValDialog(property, ref, occurrenceCount)
-        if (!dialog.showAndGet()) return InlineMode.NONE
-        return if (JavaRefactoringSettings.getInstance().INLINE_LOCAL_THIS) InlineMode.PRIMARY else InlineMode.ALL
     }
 
     private fun getParametersForFunctionLiteral(initializer: KtExpression): String? {
