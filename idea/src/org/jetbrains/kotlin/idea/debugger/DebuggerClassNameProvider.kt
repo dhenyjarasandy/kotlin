@@ -35,6 +35,8 @@ import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.ComputedClassNames
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.ComputedClassNames.Companion.EMPTY
 import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.Companion.getOrComputeClassNames
+import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.ComputedClassNames.Companion.Cached
+import org.jetbrains.kotlin.idea.debugger.evaluate.KotlinDebuggerCaches.ComputedClassNames.Companion.NonCached
 import org.jetbrains.kotlin.idea.util.application.runReadAction
 import org.jetbrains.kotlin.load.java.JvmAbi
 import org.jetbrains.kotlin.psi.*
@@ -42,14 +44,15 @@ import org.jetbrains.kotlin.psi.psiUtil.containingClassOrObject
 import org.jetbrains.kotlin.psi.psiUtil.isObjectLiteral
 import org.jetbrains.kotlin.resolve.BindingContext
 import org.jetbrains.kotlin.resolve.inline.InlineUtil
+import org.jetbrains.org.objectweb.asm.Type
 import java.util.*
 
 class DebuggerClassNameProvider(
-        delegate: DebugProcess,
+        private val debugProcess: DebugProcess,
         scopes: List<GlobalSearchScope>,
         val findInlineUseSites: Boolean = true,
         val alwaysReturnLambdaParentClass: Boolean = true
-) : DebugProcess by delegate {
+) {
     companion object {
         internal val CLASS_ELEMENT_TYPES = arrayOf<Class<out PsiElement>>(
                 KtFile::class.java,
@@ -71,28 +74,32 @@ class DebuggerClassNameProvider(
         }
     }
 
-    val inlineUsagesSearcher = InlineCallableUsagesSearcher(this, scopes)
+    val inlineUsagesSearcher = InlineCallableUsagesSearcher(debugProcess, scopes)
 
-    fun getClassesForPosition(position: SourcePosition): List<ReferenceType> {
-        return doGetClassesForPosition(position) { className, lineNumber ->
-            virtualMachineProxy.classesByName(className).flatMap { findTargetClasses(it, lineNumber) }
-        }
+    /**
+     * Returns classes in which the given line number *is* present.
+     */
+    fun getClassesForPosition(position: SourcePosition): List<ReferenceType> = with (debugProcess) {
+        val lineNumber = position.line
+
+        return doGetClassesForPosition(position)
+                .flatMap { className -> virtualMachineProxy.classesByName(className) }
+                .flatMap { referenceType -> findTargetClasses(referenceType, lineNumber) }
     }
 
-    fun getOuterClassInternalNamesForPosition(position: SourcePosition): List<String> {
-        return doGetClassesForPosition(position) { className, _ -> listOf(className) }
+    /**
+     * Returns classes names in JDI format (my.app.App$Nested) in which the given line number *may be* present.
+     */
+    fun getOuterClassNamesForPosition(position: SourcePosition): List<String> {
+        return doGetClassesForPosition(position).toList()
     }
 
-    private inline fun <T: Any> doGetClassesForPosition(
-            position: SourcePosition,
-            transformer: (className: String, lineNumber: Int) -> List<T?>
-    ): List<T> {
-        val line = position.line
+    private fun doGetClassesForPosition(position: SourcePosition): Set<String> {
         val relevantElement = runReadAction { getRelevantElement(position.elementAt) }
 
         val result = getOrComputeClassNames(relevantElement) { element ->
             getOuterClassNamesForElement(element)
-        }.filterNotNullTo(mutableSetOf())
+        }.toMutableSet()
 
         for (lambda in position.readAction(::getLambdasAtLineIfAny)) {
             result += getOrComputeClassNames(lambda) { element ->
@@ -100,7 +107,7 @@ class DebuggerClassNameProvider(
             }
         }
 
-        return result.flatMap { transformer(it, line) }.filterNotNull()
+        return result
     }
 
     @PublishedApi
@@ -123,15 +130,21 @@ class DebuggerClassNameProvider(
                 }
                 else { // Guaranteed to be non-local class or object
                     element.readAction {
-                        if (it is KtClass && it.isInterface())
-                            ComputedClassNames.Cached(listOfNonNull(getNameForNonLocalClass(it, handleDefaultImpls = true),
-                                          getNameForNonLocalClass(it, handleDefaultImpls = false)))
-                        else
+                        if (it is KtClass && runReadAction { it.isInterface() }) {
+                            val name = getNameForNonLocalClass(it)
+
+                            if (name != null)
+                                Cached(listOf(name, name + JvmAbi.DEFAULT_IMPLS_SUFFIX))
+                            else
+                                ComputedClassNames.EMPTY
+                        } else {
                             getNameForNonLocalClass(it)?.let { ComputedClassNames.Cached(it) } ?: ComputedClassNames.EMPTY
+                        }
                     }
                 }
             }
             is KtProperty -> {
+                // inline top level property!
                 if (runReadAction { element.isTopLevel }) {
                     return getOuterClassNamesForElement(element.relevantParentInReadAction)
                 }
@@ -141,6 +154,7 @@ class DebuggerClassNameProvider(
                     return getOuterClassNamesForElement(enclosingElementForLocal)
                 }
 
+                // Handle non-local property
                 val containingClassOrFile = runReadAction {
                     PsiTreeUtil.getParentOfType(element, KtFile::class.java, KtClassOrObject::class.java)
                 }
@@ -161,16 +175,17 @@ class DebuggerClassNameProvider(
                 val descriptor = typeMapper.bindingContext.get(BindingContext.DECLARATION_TO_DESCRIPTOR, element)
 
                 val classNamesOfContainingDeclaration = getOuterClassNamesForElement(element.relevantParentInReadAction)
-                val nonInlineClasses = if (runReadAction { element.isLocal }
-                                        || isFunctionWithSuspendStateMachine(descriptor, typeMapper.bindingContext)) {
-                    classNamesOfContainingDeclaration + ComputedClassNames.Cached(
+
+                val nonInlineClasses: ComputedClassNames
+                if (runReadAction { element.name == null || element.isLocal } || isFunctionWithSuspendStateMachine(descriptor, typeMapper.bindingContext)) {
+                    nonInlineClasses = classNamesOfContainingDeclaration + ComputedClassNames.Cached(
                             asmTypeForAnonymousClass(typeMapper.bindingContext, element).internalName.toJdiName())
                 } else {
-                    classNamesOfContainingDeclaration
+                    nonInlineClasses = classNamesOfContainingDeclaration
                 }
 
                 if (!findInlineUseSites) {
-                    return nonInlineClasses
+                    return NonCached(nonInlineClasses.classNames)
                 }
 
                 val inlineCallSiteClasses = inlineUsagesSearcher.findInlinedCalls(
@@ -200,10 +215,22 @@ class DebuggerClassNameProvider(
                     return ComputedClassNames.Cached(nonInlinedLambdaClassName)
                 }
 
-                getOuterClassNamesForElement(element.relevantParentInReadAction) + ComputedClassNames.Cached(nonInlinedLambdaClassName)
+                ComputedClassNames.Cached(nonInlinedLambdaClassName) + getOuterClassNamesForElement(element.relevantParentInReadAction)
             }
             else -> getOuterClassNamesForElement(element.relevantParentInReadAction)
         }
+    }
+
+    private fun getNameForNonLocalClass(nonLocalClassOrObject: KtClassOrObject): String? {
+        val typeMapper = KotlinDebuggerCaches.getOrCreateTypeMapper(nonLocalClassOrObject)
+        val descriptor = typeMapper.bindingContext[BindingContext.CLASS, nonLocalClassOrObject] ?: return null
+
+        val type = typeMapper.mapClass(descriptor)
+        if (type.sort != Type.OBJECT) {
+            return null
+        }
+
+        return type.className
     }
 
     private fun isFunctionWithSuspendStateMachine(descriptor: DeclarationDescriptor?, bindingContext: BindingContext): Boolean {
@@ -214,38 +241,7 @@ class DebuggerClassNameProvider(
         get() = runReadAction { getRelevantElement(this.parent) }
 }
 
-private fun <T: Any> listOfNonNull(first: T?, second: T?): List<T> {
-    return when {
-        first != null && second != null -> listOf(first, second)
-        first != null -> Collections.singletonList(first)
-        second != null -> Collections.singletonList(second)
-        else -> Collections.emptyList()
-    }
-}
-
 private fun String.toJdiName() = replace('/', '.')
-
-// Should be run inside a read action
-private fun getNameForNonLocalClass(classOrObject: KtClassOrObject, handleDefaultImpls: Boolean = true): String? {
-    val simpleName = classOrObject.name ?: return null
-
-    val containingClass = PsiTreeUtil.getParentOfType(classOrObject, KtClassOrObject::class.java, true)
-    val containingClassName = containingClass?.let {
-        getNameForNonLocalClass(
-                containingClass,
-                !(containingClass is KtClass && classOrObject is KtObjectDeclaration && classOrObject.isCompanion())
-        ) ?: return null
-    }
-
-    val packageFqName = classOrObject.containingKtFile.packageFqName.asString()
-    val selfName = if (containingClassName != null) "$containingClassName$$simpleName" else simpleName
-    val selfNameWithPackage = if (packageFqName.isEmpty() || containingClassName != null) selfName else "$packageFqName.$selfName"
-
-    return if (handleDefaultImpls && classOrObject is KtClass && classOrObject.isInterface())
-        selfNameWithPackage + JvmAbi.DEFAULT_IMPLS_SUFFIX
-    else
-        selfNameWithPackage
-}
 
 private fun DebugProcess.findTargetClasses(outerClass: ReferenceType, lineAt: Int): List<ReferenceType> {
     val vmProxy = virtualMachineProxy
@@ -269,8 +265,18 @@ private fun DebugProcess.findTargetClasses(outerClass: ReferenceType, lineAt: In
 
             if (lineAt == locationLine) {
                 targetClasses += outerClass
+                break
             }
         }
+
+        // The same line number may appear in different classes so we have to scan nested classes as well.
+        // For example, in the next example line 3 appears in both Foo and Foo$Companion.
+
+        /* class Foo {
+            companion object {
+                val a = Foo() /* line 3 */
+            }
+        } */
 
         val nestedTypes = vmProxy.nestedTypes(outerClass)
         for (nested in nestedTypes) {

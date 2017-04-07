@@ -6,11 +6,13 @@ import kotlin.concurrent.timer
 fun main(args: Array<String>) {
     timer("Repeating println", period=100) {
         //Breakpoint!
-        println("Here")
+        foo()
         System.exit(0)
     }
 
-    sleep(11111111)
+    sleep(2000)
 }
+
+fun foo() {}
 
 // RESUME: 1

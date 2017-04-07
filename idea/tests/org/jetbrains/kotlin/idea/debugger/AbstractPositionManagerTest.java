@@ -233,8 +233,8 @@ public abstract class AbstractPositionManagerTest extends KotlinLightCodeInsight
         SourcePosition position = SourcePosition.createFromLine(breakpoint.file, breakpoint.lineNumber);
         List<ReferenceType> classes = positionManager.getAllClasses(position);
         assertNotNull(classes);
-        assertFalse("Classes not found for line " + (breakpoint.lineNumber + 1) + ", expected "
-                    + breakpoint.classNameRegexp, classes.isEmpty());
+        assertFalse("Classes not found for line " + (breakpoint.lineNumber + 1) + ", expected " + breakpoint.classNameRegexp,
+                    classes.isEmpty());
 
         if (classes.stream().noneMatch(clazz -> clazz.name().matches(breakpoint.classNameRegexp))) {
             throw new AssertionError("Breakpoint class '" + breakpoint.classNameRegexp +
@@ -242,8 +242,7 @@ public abstract class AbstractPositionManagerTest extends KotlinLightCodeInsight
                                      classes.stream().map(ReferenceType::name).collect(Collectors.joining(",")));
         }
 
-        // JDI names are of form "package.Class$InnerClass"
-        ReferenceType typeWithFqName = new MockReferenceType(classes.get(0).name().replace('/', '.'));
+        ReferenceType typeWithFqName = classes.get(0);
         Location location = new MockLocation(typeWithFqName, breakpoint.file.getName(), breakpoint.lineNumber + 1);
 
         SourcePosition actualPosition = positionManager.getSourcePosition(location);

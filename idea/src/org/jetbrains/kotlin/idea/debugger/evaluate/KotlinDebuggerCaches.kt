@@ -243,7 +243,6 @@ class KotlinDebuggerCaches(project: Project) {
             fun Cached(className: String) = ComputedClassNames(Collections.singletonList(className), true)
 
             fun NonCached(classNames: List<String>) = ComputedClassNames(classNames, false)
-            fun NonCached(className: String) = ComputedClassNames(Collections.singletonList(className), false)
         }
 
         fun distinct() = ComputedClassNames(classNames.distinct(), shouldBeCached)

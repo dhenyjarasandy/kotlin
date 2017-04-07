@@ -10,9 +10,11 @@ object Some {
     init {
         inlineWithReified {
             //Breakpoint!
-            println("breakpoint here") //Will marked as (X), and never hit, but executes
+            foo() // Will marked as (X), and never hit, but executes
         }
     }
+
+    fun foo() {}
 
     fun magic() {
         collection.forEach { it.invoke() }

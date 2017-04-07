@@ -140,9 +140,10 @@ class SmartMockReferenceType(val classNode: ClassNode, private val context: Smar
 
     override fun methodsByName(p0: String?, p1: String?) = TODO()
 
-    override fun availableStrata() = TODO()
+    override fun availableStrata() = emptyList<String>()
 
     override fun allMethods() = TODO()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other?.javaClass != javaClass) return false

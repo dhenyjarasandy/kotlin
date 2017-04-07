@@ -41,11 +41,11 @@ class KotlinSyntheticTypeComponentProvider: SyntheticTypeComponentProvider {
 
             if (typeComponent.location().lineNumber() != 1) return false
 
-            if (typeComponent.allLineLocations().any { it.lineNumber() < 1 }) {
-                return true
+            if (typeComponent.allLineLocations().any { it.lineNumber() != 1 }) {
+                return false
             }
 
-            return containingType.allLineLocations().any { it.lineNumber() < 1 }
+            return !typeComponent.declaringType().allLineLocations().any { it.lineNumber() != 1 }
         }
         catch(e: AbsentInformationException) {
             return false

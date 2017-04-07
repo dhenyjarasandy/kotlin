@@ -78,7 +78,7 @@ class InlineCallableUsagesSearcher(val myDebugProcess: DebugProcess, val scopes:
             }
 
             val results = searchResult.map { transformer(it) }
-            return ComputedClassNames(results.flatMap { it.classNames }, shouldBeCached = results.any { it.shouldBeCached })
+            return ComputedClassNames(results.flatMap { it.classNames }, shouldBeCached = results.all { it.shouldBeCached })
         }
     }
 
