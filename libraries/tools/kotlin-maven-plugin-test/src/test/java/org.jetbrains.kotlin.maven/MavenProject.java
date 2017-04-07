@@ -2,6 +2,7 @@ package org.jetbrains.kotlin.maven;
 
 import com.intellij.openapi.util.io.FileUtil;
 import kotlin.io.TextStreamsKt;
+import kotlin.text.StringsKt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -69,23 +70,21 @@ class MavenProject {
 
         String kotlinVersionProperty = "kotlin.version";
         cmd.add("-D" + kotlinVersionProperty + "=" + getNotNullSystemProperty(kotlinVersionProperty));
+
         String mavenRepoLocalProperty = "maven.repo.local";
         String localRepoPath = System.getProperty(mavenRepoLocalProperty);
-        if (isExistingDirectory(localRepoPath)) {
-            cmd.add("-D" + mavenRepoLocalProperty + "=" + localRepoPath);
+        try {
+            if (localRepoPath != null && !StringsKt.isBlank(localRepoPath) && new File(localRepoPath).isDirectory()) {
+                cmd.add("-D" + mavenRepoLocalProperty + "=" + localRepoPath);
+            }
         }
+        catch (SecurityException e) {
+            e.printStackTrace();
+        }
+
         cmd.addAll(Arrays.asList(args));
 
         return cmd;
-    }
-
-    private boolean isExistingDirectory(@Nullable String path) {
-        try {
-            return path != null && new File(path).isDirectory();
-        }
-        catch (SecurityException e) {
-            return false;
-        }
     }
 }
 
