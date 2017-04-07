@@ -63,10 +63,10 @@ android {
     }
 
     dexOptions {
-        dexInProcess false
-        javaMaxHeapSize "700m"
+        dexInProcess true
+        javaMaxHeapSize "1000m"
         //default is 4 and Total Memory = maxProcessCount * javaMaxHeapSize
-        maxProcessCount 2
+        maxProcessCount 1
     }
 }
 
