@@ -307,21 +307,15 @@
 
         <get-protobuf-and-rename-packages/>
 
-        <download-markdown-parser/>
+        <download_teamcity_artifact
+            teamcity.server.url="https://teamcity.jetbrains.com"
+            build.locator.request="${markdown.locator}"
+            artifact.path="markdown_jar/markdown.jar"
+            dest="${dependencies}/markdown.jar"
+            usetimestamp="true"
+            build.number.pattern="\d+\s-\sKotlin\s[\w-+\.]+"
+        />
     </target>
-
-    <macrodef name="download-markdown-parser">
-        <sequential>
-            <download_teamcity_artifact
-                teamcity.server.url="https://teamcity.jetbrains.com"
-                build.locator.request="${markdown.locator}"
-                artifact.path="markdown_jar/markdown.jar"
-                dest="${dependencies}/markdown.jar"
-                usetimestamp="true"
-                build.number.pattern="\d+\s-\sKotlin\s[\w-+\.]+"
-            />
-        </sequential>
-    </macrodef>
 
     <macrodef name="get-protobuf-and-rename-packages">
         <sequential>
@@ -382,14 +376,6 @@
                 source.jar="${dependencies}/download/protobuf-java-${protobuf.version}-sources.jar"
                 target.jar="${dependencies}/protobuf-${protobuf.version}-sources.jar"
             />
-
-            <!-- Build protobuf lite jar -->
-            <exec executable="${dependencies}/bootstrap-compiler/Kotlin/kotlinc/bin/${kotlinc.executable.path}" failonerror="true">
-                <arg value="-script"/>
-                <arg value="${generators}/infrastructure/build-protobuf-lite.kts"/>
-                <arg value="${dependencies}/protobuf-${protobuf.version}.jar"/>
-                <arg value="${dependencies}/protobuf-${protobuf.version}-lite.jar"/>
-            </exec>
         </sequential>
     </macrodef>
 
