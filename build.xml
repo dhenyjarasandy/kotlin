@@ -268,39 +268,6 @@
                 <attribute name="Implementation-Version" value="${build.number}"/>
             </manifest>
         </jar>
-
-        <sequential if:true="${generate.javadoc}">
-            <delete dir="${output}/kotlin-compiler-javadoc" failonerror="false"/>
-            <javadoc destdir="${output}/kotlin-compiler-javadoc"
-                     sourcepathref="compilerSources.path"
-                     classpathref="classpath"
-                     linksource="yes"
-                     windowtitle="${manifest.impl.title.kotlin.compiler}"/>
-            <jar jarfile="${output}/kotlin-compiler-javadoc.jar">
-                <fileset dir="${output}/kotlin-compiler-javadoc"/>
-                <zipfileset file="${kotlin-home}/build.txt" prefix="META-INF"/>
-
-                <manifest>
-                    <attribute name="Built-By" value="${manifest.impl.vendor}"/>
-
-                    <attribute name="Implementation-Vendor" value="${manifest.impl.vendor}"/>
-                    <attribute name="Implementation-Title" value="${manifest.impl.title.kotlin.compiler.javadoc}"/>
-                    <attribute name="Implementation-Version" value="${build.number}"/>
-                </manifest>
-            </jar>
-        </sequential>
-
-        <sequential unless:true="${generate.javadoc}">
-            <jar jarfile="${output}/kotlin-compiler-javadoc.jar">
-                <manifest>
-                    <attribute name="Built-By" value="${manifest.impl.vendor}"/>
-
-                    <attribute name="Implementation-Vendor" value="${manifest.impl.vendor}"/>
-                    <attribute name="Implementation-Title" value="${manifest.impl.title.kotlin.compiler.javadoc}"/>
-                    <attribute name="Implementation-Version" value="${build.number}"/>
-                </manifest>
-            </jar>
-        </sequential>
     </target>
 
     <target name="preloader">
@@ -989,7 +956,7 @@
 
     <target name="dist-quick"
             depends="clean,init,prepare-dist,preloader,serialize-builtins,compiler-quick,ant-tools,runtime,other-artifacts"
-            description="Builds everything, but classes are reused from project out dir, doesn't run proguard and javadoc"/>
+            description="Builds everything, but classes are reused from project out dir, doesn't run proguard"/>
 
     <target name="dist-quick-compiler-only"
             depends="init,prepare-dist,preloader,serialize-builtins,compiler-quick"
