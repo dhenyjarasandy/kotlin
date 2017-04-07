@@ -187,9 +187,7 @@ class KotlinInlineValHandler : InlineActionHandler() {
 
         val initializerCopy = initializer.copied()
         fun analyzeInitializerCopy(): BindingContext {
-            return initializerCopy.analyzeInContext(initializer.getResolutionScope(),
-                                                    contextExpression = initializer,
-                                                    expectedType = expectedType)
+            return initializer.analyze()
         }
 
         fun performRefactoring() {
