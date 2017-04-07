@@ -46,7 +46,7 @@ To build this project, first time you try to build you need to run this:
 which will setup the dependencies on
 
 * `intellij-core` is a part of command line compiler and contains only necessary APIs.
-* `idea-full` is a full blown IntelliJ IDEA Community Edition to be used in former plugin module.
+* `idea-full` is a full blown IntelliJ IDEA Community Edition to be used in the plugin module.
 
 Then, you need to run
 
@@ -57,8 +57,10 @@ which will build the binaries of the compiler and put them into the `dist` direc
 
 **OPTIONAL:** Maven artifact distribution is built separately, go into `libraries` directory after building the compiler and run:
 
-    gradlew build install
+    ./gradlew build install
     mvn install
+
+> Note: on Windows type `gradlew` without the leading `./`
 
 Refer to [libraries/ReadMe.md](libraries/ReadMe.md) for details.
 
@@ -133,7 +135,7 @@ Also the [JavaScript translation](https://github.com/JetBrains/kotlin/blob/maste
 
 The Kotlin compiler is written in Java and Kotlin (we gradually migrate more and more of it to pure Kotlin). So the easiest way to work on the compiler or IntelliJ IDEA plugin is
 
-* download a recent [IDEA EAP build](https://confluence.jetbrains.com/display/IDEADEV/EAP)
+* download a recent [IntelliJ IDEA](https://www.jetbrains.com/idea/?fromMenu#chooseYourEdition), Community edition is enough
 * [install the Kotlin plugin](#installing-plugin)
 * open the [root kotlin project](https://github.com/JetBrains/kotlin) in IDEA (opening the kotlin directory)
 
@@ -146,15 +148,17 @@ You can now run the various Run/Debug Configurations such as
 
 ## If you want to work on the Kotlin libraries
 
-* download a recent [IDEA EAP build](https://confluence.jetbrains.com/display/IDEADEV/EAP)
+* download a recent [IntelliJ IDEA](https://www.jetbrains.com/idea/?fromMenu#chooseYourEdition), Community edition is enough
 * [install the Kotlin plugin](#installing-plugin)
 * open the [kotlin libraries project](https://github.com/JetBrains/kotlin/tree/master/libraries)
 
 Then build via
 
     cd libraries
-    gradlew build install
+    ./gradlew build install
     mvn install
+    
+> Note: on Windows type `gradlew` without the leading `./`
 
 Some of the code in the standard library is created by generating code from templates. See the [README](libraries/stdlib/ReadMe.md) in the stdlib section for how run the code generator. The existing templates can be used as examples for creating new ones.
 

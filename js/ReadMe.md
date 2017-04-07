@@ -17,7 +17,7 @@ This allows the test cases to be [run directly in a web page in any web browser]
 
 ## Using the Kotlin Library in JavaScript
 
-There is a [simple sample](https://github.com/JetBrains/kotlin/blob/master/libraries/examples/browser-example/ReadMe.md) which shows how to use the [Kotlin Standard Library](https://kotlinlang.org/api/latest/jvm/stdlib/index.html) from inside JavaScript in a web page or in a JVM using [kool.io](http://kool.io/)'s [JavaFX browser](https://github.com/koolio/kool/blob/master/samples/kool-template-sample/ReadMe.md)
+There is a [simple sample](../libraries/examples/browser-example/ReadMe.md) which shows how to use the [Kotlin Standard Library](https://kotlinlang.org/api/latest/jvm/stdlib/index.html) from inside JavaScript in a web page.
 
 ## Contributing
 

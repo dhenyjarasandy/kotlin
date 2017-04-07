@@ -21,7 +21,9 @@ Be sure to build Kotlin compiler distribution before launching Gradle and Maven:
 
 Core libraries are built with gradle, you can run that build using the gradle wrapper script even without local gradle installation:
     
-    gradlew build install
+    ./gradlew build install
+    
+> Note: on Windows type `gradlew` without the leading `./`
     
 This command executes the `build` task, which assembles the artifacts and run the tests, and the `install` task, which puts the artifacts to the local maven repository to be used by the subsequent maven build.
 
