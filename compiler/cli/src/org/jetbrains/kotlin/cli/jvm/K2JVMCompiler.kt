@@ -187,7 +187,7 @@ class K2JVMCompiler : CLICompiler<K2JVMCompilerArguments>() {
                 val environment = createEnvironmentWithScriptingSupport(rootDisposable, configuration, arguments, messageCollector)
                                   ?: return COMPILATION_ERROR
 
-                if (arguments.useJavac) {
+                if (true) {
                     environment.configuration.put(JVMConfigurationKeys.USE_JAVAC, true)
                     environment.registerJavac(outDir = File(destination),
                                               messageCollector = messageCollector,
@@ -206,7 +206,7 @@ class K2JVMCompiler : CLICompiler<K2JVMCompilerArguments>() {
 
                 KotlinToJVMBytecodeCompiler.compileBunchOfSources(environment)
 
-                if (arguments.useJavac) {
+                if (true) {
                     val success = JavacWrapper.getInstance(environment.project).use(JavacWrapper::compile)
                     if (!success) return COMPILATION_ERROR
                 }

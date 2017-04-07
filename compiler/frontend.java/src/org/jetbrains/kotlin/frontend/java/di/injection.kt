@@ -65,7 +65,7 @@ private fun StorageComponentContainer.configureJavaTopDownAnalysis(
 
     useInstance(VirtualFileFinderFactory.getInstance(project).create(moduleContentScope))
 
-    if (useJavac) {
+    if (true) {
         useImpl<JavacBasedClassFinder>()
         useImpl<JavacBasedJavaResolverCache>()
         useImpl<JavacBasedPropertyInitializerEvaluator>()
@@ -123,7 +123,7 @@ fun createContainerForLazyResolveWithJava(
         useImpl<LazyResolveToken>()
     }
 }.apply {
-    if (useJavac)
+    if (true)
         get<JavacBasedClassFinder>().initialize(bindingTrace, get<KotlinCodeAnalyzer>())
     else
         get<JavaClassFinderImpl>().initialize(bindingTrace, get<KotlinCodeAnalyzer>())
