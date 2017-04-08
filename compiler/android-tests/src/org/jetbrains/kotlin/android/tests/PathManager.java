@@ -52,8 +52,8 @@ public class PathManager {
         return getAndroidSdkRoot() + "/build-tools";
     }
 
-    public String getOutputForCompiledFiles() {
-        return tmpFolder + "/libs/codegen-test-output";
+    public String getOutputForCompiledFiles(int index) {
+        return tmpFolder + "/libs/libtest" + index;
     }
 
     public String getLibsFolderInAndroidTestedModuleTmpFolder() {

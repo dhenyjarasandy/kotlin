@@ -53,6 +53,43 @@ android {
     }
     packagingOptions { exclude 'META-INF/build.txt' }
 
+    applicationVariants.all { variant ->
+        variant.productFlavors.each { flavor ->
+            println "Configuring $flavor.name flavor.name..."
+            println "Perform folder jar: libs/${flavor.name}/..."
+            def testJar = "${flavor.name}.jar"
+            ant.jar(basedir: "libs/${flavor.name}/", destfile: "libs/" + testJar)
+            println "Adding jar dependency to flavor"
+            dependencies {
+                compile fileTree(dir: 'libs', include: [testJar])
+            }
+        }
+    }
+
+    productFlavors {
+        libtest0 {
+            dependencies {
+               compile fileTree(dir: 'libs', include: ['libtest0.jar'])
+            }
+        }
+        libtest1 {
+            dependencies {
+                compile fileTree(dir: 'libs', include: ['libtest1.jar'])
+            }
+        }
+        libtest2 {
+            dependencies {
+                compile fileTree(dir: 'libs', include: ['libtest2.jar'])
+            }
+        }
+        libtest3 {
+            dependencies {
+                compile fileTree(dir: 'libs', include: ['libtest3.jar'])
+            }
+        }
+    }
+
+
     //TODO run under java 6, cause there is error on implicit 'stream' import in 'asWithMutable' test
     lintOptions {
         abortOnError false
@@ -64,13 +101,14 @@ android {
 
     dexOptions {
         dexInProcess false
-        javaMaxHeapSize "700m"
+        javaMaxHeapSize "300m"
         //default is 4 and Total Memory = maxProcessCount * javaMaxHeapSize
-        maxProcessCount 2
+        maxProcessCount 1
+        additionalParameters "--debug"
     }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(dir: 'libs', include: ['kotlin-*.jar'])
     androidTestCompile 'junit:junit:4.12'
 }

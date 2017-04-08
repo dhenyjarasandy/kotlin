@@ -20,7 +20,6 @@ import com.intellij.util.PlatformUtils;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.android.tests.ant.AntRunner;
 import org.jetbrains.kotlin.android.tests.download.SDKDownloader;
 import org.jetbrains.kotlin.android.tests.emulator.Emulator;
 import org.jetbrains.kotlin.android.tests.gradle.GradleRunner;
@@ -56,16 +55,22 @@ public class CodegenTestsOnAndroidRunner {
 
         String resultOutput = runTests();
 
-        String reportFolder = pathManager.getTmpFolder() + "/build/outputs/androidTest-results/connected";
+        File flavorsFolder = new File(pathManager.getTmpFolder() + "/build/outputs/androidTest-results/connected/flavors/");
         try {
-            List<TestCase> testCases = parseSingleReportInFolder(reportFolder);
-            for (TestCase aCase : testCases) {
-                suite.addTest(aCase);
+            File[] flavors = flavorsFolder.listFiles(file -> file.isDirectory() && file.getName().toLowerCase().startsWith("libtest"));
+            Assert.assertNotNull("There is no test results in report", flavors);
+            Assert.assertTrue("There is no test results in report", flavors.length != 0);
+
+            for (File reportFolder : flavors) {
+                List<TestCase> testCases = parseSingleReportInFolder(reportFolder);
+                for (TestCase aCase : testCases) {
+                    suite.addTest(aCase);
+                }
+                Assert.assertNotEquals("There is no test results in report", 0, testCases.size());
             }
-            Assert.assertNotEquals("There is no test results in report", 0, testCases.size());
         }
         catch (Exception e) {
-            throw new RuntimeException("Can't parse test results in " + reportFolder +"\n" + resultOutput);
+            throw new RuntimeException("Can't parse test results in " + flavorsFolder +"\n" + resultOutput);
         }
 
         return suite;
@@ -83,8 +88,6 @@ public class CodegenTestsOnAndroidRunner {
         downloader.unzipAll();
         PermissionManager.setPermissions(pathManager);
 
-        AntRunner antRunner = new AntRunner(pathManager);
-        antRunner.packLibraries();
         Emulator emulator = new Emulator(pathManager, Emulator.ARM);
         GradleRunner gradleRunner = new GradleRunner(pathManager);
         gradleRunner.clean();
@@ -132,12 +135,11 @@ public class CodegenTestsOnAndroidRunner {
         return result;
     }
 
-    private static List<TestCase> parseSingleReportInFolder(String reportFolder) throws
+    private static List<TestCase> parseSingleReportInFolder(File reportFolder) throws
                                                                                  IOException,
                                                                                  SAXException,
                                                                                  ParserConfigurationException {
-        File folder = new File(reportFolder);
-        File[] files = folder.listFiles();
+        File[] files = reportFolder.listFiles();
         assert files != null;
         assert files.length == 1;
         File reportFile = files[0];
