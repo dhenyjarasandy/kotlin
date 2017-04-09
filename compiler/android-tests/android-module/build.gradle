@@ -55,38 +55,42 @@ android {
 
     applicationVariants.all { variant ->
         variant.productFlavors.each { flavor ->
-            println "Configuring $flavor.name flavor.name..."
+            println "Configuring '${flavor.name}' flavor..."
             println "Perform folder jar: libs/${flavor.name}/..."
             def testJar = "${flavor.name}.jar"
-            ant.jar(basedir: "libs/${flavor.name}/", destfile: "libs/" + testJar)
+            ant.jar(basedir: "libs/${flavor.name}0/", destfile: "libs/" +  flavor.name  + "0.jar")
+            ant.jar(basedir: "libs/${flavor.name}1/", destfile: "libs/" + flavor.name + "1.jar")
+            ant.jar(basedir: "libs/${flavor.name}2/", destfile: "libs/" + flavor.name + "2.jar")
+            ant.jar(basedir: "libs/${flavor.name}3/", destfile: "libs/" + flavor.name + "3.jar")
             println "Adding jar dependency to flavor"
-            dependencies {
-                compile fileTree(dir: 'libs', include: [testJar])
-            }
+
         }
     }
 
     productFlavors {
-        libtest0 {
+        libtest {
             dependencies {
                compile fileTree(dir: 'libs', include: ['libtest0.jar'])
+               compile fileTree(dir: 'libs', include: ['libtest1.jar'])
+               compile fileTree(dir: 'libs', include: ['libtest2.jar'])
+               compile fileTree(dir: 'libs', include: ['libtest3.jar'])
             }
         }
-        libtest1 {
-            dependencies {
-                compile fileTree(dir: 'libs', include: ['libtest1.jar'])
-            }
-        }
-        libtest2 {
-            dependencies {
-                compile fileTree(dir: 'libs', include: ['libtest2.jar'])
-            }
-        }
-        libtest3 {
-            dependencies {
-                compile fileTree(dir: 'libs', include: ['libtest3.jar'])
-            }
-        }
+//        libtest1 {
+//            dependencies {
+//                compile fileTree(dir: 'libs', include: ['libtest1.jar'])
+//            }
+//        }
+//        libtest2 {
+//            dependencies {
+//                compile fileTree(dir: 'libs', include: ['libtest2.jar'])
+//            }
+//        }
+//        libtest3 {
+//            dependencies {
+//                compile fileTree(dir: 'libs', include: ['libtest3.jar'])
+//            }
+//        }
     }
 
 
