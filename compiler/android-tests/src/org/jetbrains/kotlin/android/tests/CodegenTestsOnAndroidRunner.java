@@ -55,22 +55,16 @@ public class CodegenTestsOnAndroidRunner {
 
         String resultOutput = runTests();
 
-        File flavorsFolder = new File(pathManager.getTmpFolder() + "/build/outputs/androidTest-results/connected/flavors/");
+        String reportFolder = pathManager.getTmpFolder() + "/build/outputs/androidTest-results/connected";
         try {
-            File[] flavors = flavorsFolder.listFiles(file -> file.isDirectory() && file.getName().toLowerCase().startsWith("libtest"));
-            Assert.assertNotNull("There is no test results in report", flavors);
-            Assert.assertTrue("There is no test results in report", flavors.length != 0);
-
-            for (File reportFolder : flavors) {
-                List<TestCase> testCases = parseSingleReportInFolder(reportFolder);
-                for (TestCase aCase : testCases) {
-                    suite.addTest(aCase);
-                }
-                Assert.assertNotEquals("There is no test results in report", 0, testCases.size());
+            List<TestCase> testCases = parseSingleReportInFolder(reportFolder);
+            for (TestCase aCase : testCases) {
+                suite.addTest(aCase);
             }
+            Assert.assertNotEquals("There is no test results in report", 0, testCases.size());
         }
         catch (Exception e) {
-            throw new RuntimeException("Can't parse test results in " + flavorsFolder +"\n" + resultOutput);
+            throw new RuntimeException("Can't parse test results in " + reportFolder +"\n" + resultOutput);
         }
 
         return suite;
@@ -135,11 +129,12 @@ public class CodegenTestsOnAndroidRunner {
         return result;
     }
 
-    private static List<TestCase> parseSingleReportInFolder(File reportFolder) throws
+    private static List<TestCase> parseSingleReportInFolder(String reportFolder) throws
                                                                                  IOException,
                                                                                  SAXException,
                                                                                  ParserConfigurationException {
-        File[] files = reportFolder.listFiles();
+        File folder = new File(reportFolder);
+        File[] files = folder.listFiles();
         assert files != null;
         assert files.length == 1;
         File reportFile = files[0];
