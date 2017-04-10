@@ -54,7 +54,7 @@ public class CompilerSmokeTest extends CompilerSmokeTestBase {
     }
 
     public void testSimpleScript() throws Exception {
-        runCompiler("script", "-script", "script.kts", "hi", "there");
+        runCompiler("script", "-script", "script.kts", "--", "hi", "-name", "Marty", "--", "there");
     }
 
     public void testScriptWithClasspath() throws Exception {
